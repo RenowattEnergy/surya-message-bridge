@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.thingsboard.rule.engine.node.enrichment;
+package org.thingsboard.rule.engine.node.smb;
 
 import lombok.Data;
 import org.thingsboard.rule.engine.api.NodeConfiguration;
 
 @Data
-public class TbGetSumIntoMetadataConfiguration implements NodeConfiguration<TbGetSumIntoMetadataConfiguration> {
-
-    private String inputKey;
-    private String outputKey;
+@lombok.EqualsAndHashCode(callSuper = false)
+public class SuryaMessageBridgeConfig implements NodeConfiguration<SuryaMessageBridgeConfig> {
+    private String redisURI;
+    private String streamKey;
 
     @Override
-    public TbGetSumIntoMetadataConfiguration defaultConfiguration() {
-        var configuration = new TbGetSumIntoMetadataConfiguration();
-        configuration.setInputKey("temperature");
-        configuration.setOutputKey("TemperatureSum");
-        return configuration;
+    public SuryaMessageBridgeConfig defaultConfiguration() {
+        SuryaMessageBridgeConfig config = new SuryaMessageBridgeConfig();
+        config.setRedisURI("redis://localhost:6379");
+        config.setStreamKey("defaultStreamKey");
+        return config;
     }
-
 }
