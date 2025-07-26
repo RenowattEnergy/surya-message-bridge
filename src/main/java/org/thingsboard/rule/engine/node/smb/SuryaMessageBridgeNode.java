@@ -53,7 +53,6 @@ public class SuryaMessageBridgeNode implements TbNode {
             throw new TbNodeException(e);
         }
         
-        this.redisURI = conf.getRedisURI();
         try {
             this.redisURI = conf.getRedisURI();
             log.info("Initializing SuryaMessageBridgeNode with Redis URI: {}", this.redisURI);
@@ -63,7 +62,7 @@ public class SuryaMessageBridgeNode implements TbNode {
             log.info("Connecting to Redis at {}", this.redisURI);
 
             this.redisClient = RedisClient.create(this.redisURI);
-            this.connection = redisClient.connect();
+            this.connection = this.redisClient.connect();
         } catch (RedisConnectionException e) {
             log.error("Redis connection failed: {}", e.getMessage(), e);
             throw new RuntimeException("Cannot start SuryaMessageBridgeNode without Redis");
@@ -71,8 +70,6 @@ public class SuryaMessageBridgeNode implements TbNode {
 
         this.streamKey = conf.getStreamKey();
         this.mapper = new ObjectMapper();
-        this.redisClient = RedisClient.create(redisURI);
-        this.connection = redisClient.connect();
         this.syncCommands = connection.sync();
     }
 
