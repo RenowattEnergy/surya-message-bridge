@@ -23,12 +23,14 @@ import org.thingsboard.rule.engine.api.NodeConfiguration;
 public class SuryaMessageBridgeConfig implements NodeConfiguration<SuryaMessageBridgeConfig> {
     private String redisURI;
     private String streamKey;
+    private String maxlen;
 
     @Override
     public SuryaMessageBridgeConfig defaultConfiguration() {
         SuryaMessageBridgeConfig config = new SuryaMessageBridgeConfig();
         config.setRedisURI("redis://localhost:6379");
         config.setStreamKey("defaultStreamKey");
+        config.setMaxlen("10000");
         return config;
     }
 }

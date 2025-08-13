@@ -16,9 +16,13 @@
 
 package org.thingsboard.rule.engine.node.smb;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisConnectionException;
+import io.lettuce.core.XAddArgs;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.api.StatefulRedisConnection;
 
@@ -27,6 +31,10 @@ import org.thingsboard.rule.engine.api.*;
 import org.thingsboard.server.common.msg.TbMsg;
 import org.thingsboard.server.common.msg.TbMsgMetaData;
 import org.thingsboard.server.common.data.plugin.ComponentType;
+
+import java.util.Collections;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +47,7 @@ public class SuryaMessageBridgeNode implements TbNode {
     private ObjectMapper mapper;
     private String redisURI;
     private String streamKey;
+    private String maxLen;
     private static final Logger log = LoggerFactory.getLogger(SuryaMessageBridgeNode.class);
 
     @Override
@@ -52,7 +61,7 @@ public class SuryaMessageBridgeNode implements TbNode {
         } catch (Exception e) {
             throw new TbNodeException(e);
         }
-        
+
         try {
             this.redisURI = conf.getRedisURI();
             log.info("Initializing SuryaMessageBridgeNode with Redis URI: {}", this.redisURI);
@@ -71,6 +80,7 @@ public class SuryaMessageBridgeNode implements TbNode {
         this.streamKey = conf.getStreamKey();
         this.mapper = new ObjectMapper();
         this.syncCommands = connection.sync();
+        this.maxLen = conf.getMaxlen();
     }
 
     @Override
@@ -80,8 +90,33 @@ public class SuryaMessageBridgeNode implements TbNode {
 
         try {
             TbMsgMetaData metadata = msg.getMetaData();
-            String json = mapper.writeValueAsString(metadata.getData());
-            syncCommands.xadd(streamKey, java.util.Map.of("data", json));
+
+            // Build metadata object
+            Map<String, String> metadataMap = Map.of(
+                    "deviceType", metadata.getValue("deviceType"),
+                    "deviceName", metadata.getValue("deviceName"));
+
+            // Parse telemetry data from msg.getData()
+            JsonNode dataNode = mapper.readTree(msg.getData());
+
+            // Build main JSON object
+            ObjectNode mainObject = mapper.createObjectNode();
+            mainObject.set("metadata", mapper.valueToTree(metadataMap));
+            mainObject.set("data", dataNode);
+
+            // Convert to JSON string
+            String json = mapper.writeValueAsString(mainObject);
+
+            log.debug("Surya: JSON data {}", json);
+
+            // Send to Redis stream
+            // XADD with MAXLEN
+        syncCommands.xadd(
+            streamKey,
+            XAddArgs.Builder.maxlen(Long.parseLong(maxLen)).approximateTrimming(true), // keep stream short
+            Collections.singletonMap("data", json)
+        );
+
             ctx.ack(msg);
         } catch (Exception e) {
             ctx.tellFailure(msg, e);
